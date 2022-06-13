@@ -3,6 +3,7 @@ package interval
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 )
 
 type BaseInterval[T baseSortable] struct {
@@ -21,6 +22,59 @@ func NewBaseInterval[T baseSortable](left, right T, openCloseType ...OpenClosedT
 		right:          right,
 		openClosedType: t,
 	}
+}
+
+// ParseStrInterval parse str to interval
+func ParseStrInterval(intervalStr string) (i *BaseInterval[string], err error) {
+	var lf, lv, rv, rf string
+	if lf, lv, rv, rf, err = blowUp(intervalStr); err != nil {
+		return
+	}
+	var openClosedType OpenClosedType
+	if openClosedType, err = getOpenClosedType(lf, rf); err != nil {
+		return nil, err
+	}
+	return NewBaseInterval[string](lv, rv, openClosedType), nil
+}
+
+// ParseIntInterval parse str to interval
+func ParseIntInterval(intervalStr string) (i *BaseInterval[int64], err error) {
+	var lf, lv, rv, rf string
+	if lf, lv, rv, rf, err = blowUp(intervalStr); err != nil {
+		return
+	}
+	var openClosedType OpenClosedType
+	if openClosedType, err = getOpenClosedType(lf, rf); err != nil {
+		return nil, err
+	}
+	var lfv, rfv int64
+	if lfv, err = strconv.ParseInt(lv, 10, 64); err != nil {
+		return
+	}
+	if rfv, err = strconv.ParseInt(rv, 10, 64); err != nil {
+		return
+	}
+	return NewBaseInterval[int64](lfv, rfv, openClosedType), nil
+}
+
+// ParseFloatInterval parse str to interval
+func ParseFloatInterval(intervalStr string) (i *BaseInterval[float64], err error) {
+	var lf, lv, rv, rf string
+	if lf, lv, rv, rf, err = blowUp(intervalStr); err != nil {
+		return
+	}
+	var openClosedType OpenClosedType
+	if openClosedType, err = getOpenClosedType(lf, rf); err != nil {
+		return nil, err
+	}
+	var lfv, rfv float64
+	if lfv, err = strconv.ParseFloat(lv, 64); err != nil {
+		return
+	}
+	if rfv, err = strconv.ParseFloat(rv, 64); err != nil {
+		return
+	}
+	return NewBaseInterval[float64](lfv, rfv, openClosedType), nil
 }
 
 // Left returns the left value of this interval
