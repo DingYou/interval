@@ -1,6 +1,7 @@
 package interval
 
 import (
+	"math"
 	"reflect"
 	"testing"
 )
@@ -94,8 +95,13 @@ func TestParseFloatInterval(t *testing.T) {
 		},
 		{
 			name:  "5",
-			args:  args{intervalStr: "(-0.1,  20000)"},
-			wantI: NewBaseInterval[float64](-0.1, 20000, Open),
+			args:  args{intervalStr: "(-0.1,  Inf)"},
+			wantI: NewBaseInterval[float64](-0.1, math.Inf(1), Open),
+		},
+		{
+			name:  "6",
+			args:  args{intervalStr: "(-Inf,  +Inf)"},
+			wantI: NewBaseInterval[float64](math.Inf(-1), math.Inf(1), Open),
 		},
 	}
 	for _, tt := range tests {
