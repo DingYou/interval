@@ -76,16 +76,9 @@ func (ti *TimeInterval) RightClosed() bool {
 
 // Contains return ture if this interval contains the given element
 func (ti *TimeInterval) Contains(e time.Time) bool {
-	if e.After(ti.left) && e.Before(ti.right) {
-		return true
-	}
-	if e.Equal(ti.left) && ti.openClosedType&ClosedOpen == ClosedOpen {
-		return true
-	}
-	if e.Equal(ti.right) && ti.openClosedType&OpenClosed == OpenClosed {
-		return true
-	}
-	return false
+	return (e.After(ti.left) && e.Before(ti.right)) ||
+		(e.Equal(ti.left) && ti.openClosedType&ClosedOpen == ClosedOpen) ||
+		(e.Equal(ti.right) && ti.openClosedType&OpenClosed == OpenClosed)
 }
 
 // String returns a readable string of this interval

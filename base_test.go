@@ -41,7 +41,7 @@ func TestParseIntInterval(t *testing.T) {
 		{
 			name:  "4",
 			args:  args{intervalStr: "(0,  20000)"},
-			wantI: NewBaseInterval[int64](1, 20000, ClosedOpen),
+			wantI: NewBaseInterval[int64](0, 20000, Open),
 		},
 		{
 			name:  "5",

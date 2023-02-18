@@ -104,21 +104,14 @@ func (bi *BaseInterval[T]) RightClosed() bool {
 
 // Contains returns true if the given element is in this interval
 func (bi *BaseInterval[T]) Contains(e T) bool {
-	if e > bi.left && e < bi.right {
-		return true
-	}
-	if e == bi.right && bi.openClosedType&OpenClosed == OpenClosed {
-		return true
-	}
-	if e == bi.left && bi.openClosedType&ClosedOpen == ClosedOpen {
-		return true
-	}
-	return false
+	return (e > bi.left && e < bi.right) ||
+		(e == bi.right && bi.openClosedType&OpenClosed == OpenClosed) ||
+		(e == bi.left && bi.openClosedType&ClosedOpen == ClosedOpen)
 }
 
 // String returns a readable string of this interval
 func (bi *BaseInterval[T]) String() string {
-	bs := bytes.Buffer{}
+	bs := &bytes.Buffer{}
 	if bi.LeftClosed() {
 		bs.WriteString(LeftClosed)
 	} else {
