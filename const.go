@@ -1,5 +1,7 @@
 package interval
 
+import "time"
+
 const (
 	Open       OpenClosedType = 0
 	OpenClosed OpenClosedType = 1
@@ -9,7 +11,7 @@ const (
 	Default = ClosedOpen
 )
 
-const defaultTimeLayout = "2006-01-02T15:04:05Z"
+const defaultTimeLayout = time.RFC3339
 
 const (
 	LeftClosed  = "["
