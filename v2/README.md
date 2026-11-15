@@ -1,6 +1,14 @@
 # interval v2
 
-One generic interval type, explicit endpoint kinds, and caller-selected ordering. No dependencies. Requires Go 1.21 or newer; works with Go 1.27. This checkout is not yet a published v2 release.
+One generic interval type, explicit endpoint kinds, and caller-selected ordering. No dependencies. Requires Go 1.21 or newer; works with Go 1.27.
+
+## Installation
+
+```sh
+go get github.com/dingyou/interval/v2@v2.0.0
+```
+
+## Quick start
 
 ```go
 import interval "github.com/dingyou/interval/v2"
@@ -72,7 +80,7 @@ Each helper copies the time value when non-nil and returns an unbounded endpoint
 ## Migration from v1
 
 1. Keep old imports pinned to an existing v1 revision until each caller is migrated. The v1 implementation is preserved in Git history, but this branch only builds and tests v2.
-2. Import `github.com/dingyou/interval/v2` for new callers. During local development use a consumer module's `replace github.com/dingyou/interval/v2 => /path/to/interval/v2` until a release is published.
+2. Install `v2.0.0` with the command above and import `github.com/dingyou/interval/v2` for new callers. Only when testing local library changes, optionally use a consumer module's `replace github.com/dingyou/interval/v2 => /path/to/interval/v2`.
 3. Replace `BaseInterval` numeric constructors with `Ordered(Inclusive(...), Exclusive(...))` (choose endpoint kinds explicitly).
 4. Replace `CompareTo` constraints with `New(..., compare)`; existing types can adapt their method to a comparison function.
 5. Replace time wrappers with `Time`, `ParseTime`, and `FormatTime`. Ordinary `String()` now has a fixed signature; custom formatting is separate.
@@ -93,4 +101,4 @@ go test -run '^$' -fuzz '^FuzzMembership$' -fuzztime=10s
 go test -run '^$' -bench . -benchmem
 ```
 
-The repository root is not a Go module; run Go commands from `v2/`. Before publication, use a repository tag like `v2.0.0` (not `v2/v2.0.0`) and verify module resolution from a clean consumer.
+The repository root is not a Go module; run Go commands from `v2/`.
