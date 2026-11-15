@@ -46,9 +46,32 @@ Finite empty strings, delimiters, outer whitespace, quotes, and backslashes are 
 
 `Time` uses `time.Time.Compare`; `ParseTime` and `FormatTime` use RFC3339Nano to preserve fractional seconds. Text encoding does not preserve a monotonic clock reading or named Location identity. Normalize input with `t.Round(0)` when consistent wall-clock ordering across serialization is important; mixing values with and without monotonic readings is not a general total-order guarantee. For durable serialization use ordinary RFC3339-representable civil timestamps; Go's time formatter is not a validator for arbitrary years/timezone offsets. All time constructors share the generic membership implementation.
 
+For nullable time text, `ParseTime` also recognizes these case-insensitive aliases after trimming whitespace:
+
+- `NULL` and `nil` are equivalent and mean an unbounded endpoint, regardless of the bracket on their own side.
+- `-inf` is accepted only on the lower end, `inf` or `+inf` only on the upper end. Like an omitted endpoint, these require an open bracket.
+- Any two valid unbounded endpoints describe the full time domain, even with mixed aliases: for example, `(,)`, `(-inf,+inf)`, `[null,nil]`, and `(nil,+inf)`. Use `empty` for an explicitly empty interval. If migrating v1 text that used two `NULL` endpoints to mean empty, convert that text to `empty` before parsing.
+
+Quoted endpoint tokens are decoded as timestamps, not aliases. `FormatTime` emits canonical text (`empty` for empty, omitted text for unbounded ends). The generic `Parse` does not recognize these aliases.
+
+When `start` and `end` are `*time.Time`, construct a half-open window like this:
+
+```go
+window, err := interval.Time(
+    interval.TimeInclusive(start),
+    interval.TimeExclusive(end),
+)
+if err != nil {
+    return err
+}
+fmt.Println(window.Contains(time.Now()))
+```
+
+Each helper copies the time value when non-nil and returns an unbounded endpoint for nil. Like text `(nil,nil)`, two Go nil pointers passed through these helpers produce the full time domain in v2; when migrating code that relied on v1's two-nil empty interval, use `Empty[time.Time]()` explicitly in that case.
+
 ## Migration from v1
 
-1. Keep old imports unchanged until each caller is migrated. v1 source and tests are untouched, including existing behavior and known endpoint/parser limitations.
+1. Keep old imports pinned to an existing v1 revision until each caller is migrated. The v1 implementation is preserved in Git history, but this branch only builds and tests v2.
 2. Import `github.com/dingyou/interval/v2` for new callers. During local development use a consumer module's `replace github.com/dingyou/interval/v2 => /path/to/interval/v2` until a release is published.
 3. Replace `BaseInterval` numeric constructors with `Ordered(Inclusive(...), Exclusive(...))` (choose endpoint kinds explicitly).
 4. Replace `CompareTo` constraints with `New(..., compare)`; existing types can adapt their method to a comparison function.
@@ -62,7 +85,6 @@ There are no intersection/union or comparator-identity rules in this release. A 
 
 ```sh
 # From repository root:
-go test ./...                      # v1
 cd v2
 go test -race -cover ./...
 go vet ./...
@@ -71,4 +93,4 @@ go test -run '^$' -fuzz '^FuzzMembership$' -fuzztime=10s
 go test -run '^$' -bench . -benchmem
 ```
 
-Nested modules are not included in the root's `go test ./...`; always test both. Before publication, use a `v2.x.y` tag for the root repository's `v2` major-version subdirectory and verify module resolution from a clean consumer.
+The repository root is not a Go module; run Go commands from `v2/`. Before publication, use a repository tag like `v2.0.0` (not `v2/v2.0.0`) and verify module resolution from a clean consumer.

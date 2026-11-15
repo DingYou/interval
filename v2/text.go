@@ -51,6 +51,11 @@ func (i Interval[T]) Format(format func(T) string) string {
 // literal escaping; surrounding unquoted whitespace is ignored. Endpoint decoder
 // errors are wrapped and remain accessible through errors.Is/errors.As.
 func Parse[T any](text string, decode func(string) (T, error), compare func(T, T) int) (Interval[T], error) {
+	return parse(text, decode, compare, nil)
+}
+
+// aliases handles optional unquoted endpoint syntax before finite decoding.
+func parse[T any](text string, decode func(string) (T, error), compare func(T, T) int, aliases func(raw string, lower, closed bool) (matched bool, err error)) (Interval[T], error) {
 	if compare == nil {
 		return Empty[T](), ErrNilCompare
 	}
@@ -89,13 +94,19 @@ func Parse[T any](text string, decode func(string) (T, error), compare func(T, T
 	if quoted || split < 0 {
 		return Empty[T](), ErrSyntax
 	}
-	parseBound := func(raw string, closed bool) (Bound[T], error) {
+	parseBound := func(raw string, lower, closed bool) (Bound[T], error) {
 		raw = strings.TrimSpace(raw)
 		if raw == "" {
 			if closed {
 				return Bound[T]{}, ErrSyntax
 			}
 			return Unbounded[T](), nil
+		}
+		if aliases != nil && raw[0] != '"' {
+			matched, err := aliases(raw, lower, closed)
+			if matched || err != nil {
+				return Unbounded[T](), err
+			}
 		}
 		if raw[0] == '"' {
 			s, err := strconv.Unquote(raw)
@@ -115,15 +126,33 @@ func Parse[T any](text string, decode func(string) (T, error), compare func(T, T
 		}
 		return Exclusive(value), nil
 	}
-	lower, err := parseBound(body[:split], text[0] == '[')
+	lower, err := parseBound(body[:split], true, text[0] == '[')
 	if err != nil {
 		return Empty[T](), fmt.Errorf("interval: lower endpoint: %w", err)
 	}
-	upper, err := parseBound(body[split+1:], text[len(text)-1] == ']')
+	upper, err := parseBound(body[split+1:], false, text[len(text)-1] == ']')
 	if err != nil {
 		return Empty[T](), fmt.Errorf("interval: upper endpoint: %w", err)
 	}
 	return New(lower, upper, compare)
+}
+
+// TimeInclusive copies a non-nil time into a closed finite endpoint.
+// A nil time represents an unbounded endpoint.
+func TimeInclusive(t *time.Time) Bound[time.Time] {
+	if t == nil {
+		return Unbounded[time.Time]()
+	}
+	return Inclusive(*t)
+}
+
+// TimeExclusive copies a non-nil time into an open finite endpoint.
+// A nil time represents an unbounded endpoint.
+func TimeExclusive(t *time.Time) Bound[time.Time] {
+	if t == nil {
+		return Unbounded[time.Time]()
+	}
+	return Exclusive(*t)
 }
 
 // Time constructs a time interval using time.Time.Compare.
@@ -131,10 +160,31 @@ func Time(lower, upper Bound[time.Time]) (Interval[time.Time], error) {
 	return New(lower, upper, time.Time.Compare)
 }
 
-// ParseTime parses RFC3339Nano endpoints. Serialized times have no monotonic
-// clock reading; see time.Time.Compare for comparisons with monotonic readings.
+// ParseTime parses RFC3339Nano endpoints. Unquoted NULL and nil are
+// case-insensitive aliases that ignore their brackets. Any two unbounded
+// endpoints represent the full time domain. Directional infinity (-inf on the
+// lower side, inf or +inf on the upper side) requires an open bracket. Serialized times have
+// no monotonic clock reading.
 func ParseTime(text string) (Interval[time.Time], error) {
-	return Parse(text, func(s string) (time.Time, error) { return time.Parse(time.RFC3339Nano, s) }, time.Time.Compare)
+	aliases := func(raw string, lower, closed bool) (bool, error) {
+		switch strings.ToLower(raw) {
+		case "null", "nil":
+			return true, nil
+		case "-inf":
+			if lower && !closed {
+				return true, nil
+			}
+		case "inf", "+inf":
+			if !lower && !closed {
+				return true, nil
+			}
+		default:
+			return false, nil
+		}
+		return true, ErrSyntax
+	}
+	decode := func(s string) (time.Time, error) { return time.Parse(time.RFC3339Nano, s) }
+	return parse(text, decode, time.Time.Compare, aliases)
 }
 
 // FormatTime formats time endpoints as RFC3339Nano, preserving fractional seconds.
